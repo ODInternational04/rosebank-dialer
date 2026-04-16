@@ -38,6 +38,8 @@ export async function GET(request: NextRequest) {
         last_name,
         role,
         is_active,
+        can_access_vault_clients,
+        can_access_gold_clients,
         created_at,
         updated_at,
         last_login
@@ -129,7 +131,15 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { email, password, first_name, last_name, role } = body
+    const { 
+      email, 
+      password, 
+      first_name, 
+      last_name, 
+      role,
+      can_access_vault_clients = true,
+      can_access_gold_clients = false
+    } = body
 
     // Validate required fields
     if (!email || !password || !first_name || !last_name || !role) {
@@ -155,6 +165,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Role must be either "admin" or "user"' }, { status: 400 })
     }
 
+    // Validate that user has access to at least one client type
+    if (!can_access_vault_clients && !can_access_gold_clients) {
+      return NextResponse.json({ 
+        error: 'User must have access to at least one client type (vault or gold)' 
+      }, { status: 400 })
+    }
+
     // Check if email already exists
     const { data: existingUser } = await supabase
       .from('users')
@@ -176,6 +193,8 @@ export async function POST(request: NextRequest) {
       last_name,
       role,
       is_active: true,
+      can_access_vault_clients,
+      can_access_gold_clients,
     }
 
     const { data: user, error } = await supabase
@@ -188,6 +207,8 @@ export async function POST(request: NextRequest) {
         last_name,
         role,
         is_active,
+        can_access_vault_clients,
+        can_access_gold_clients,
         created_at,
         updated_at
       `)

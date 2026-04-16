@@ -50,6 +50,8 @@ export default function UserManagementPage() {
     first_name: '',
     last_name: '',
     role: 'user' as 'admin' | 'user',
+    can_access_vault_clients: true,
+    can_access_gold_clients: false,
   })
 
   const limit = 10
@@ -119,6 +121,8 @@ export default function UserManagementPage() {
           first_name: '',
           last_name: '',
           role: 'user',
+          can_access_vault_clients: true,
+          can_access_gold_clients: false,
         })
         fetchUsers()
       } else {
@@ -272,6 +276,7 @@ export default function UserManagementPage() {
                 <tr>
                   <th className="table-header">User</th>
                   <th className="table-header">Role</th>
+                  <th className="table-header">Client Access</th>
                   <th className="table-header">Status</th>
                   <th className="table-header">Performance (30d)</th>
                   <th className="table-header">Last Login</th>
@@ -306,6 +311,25 @@ export default function UserManagementPage() {
                         }`}>
                           {userItem.role}
                         </span>
+                      </div>
+                    </td>
+                    <td className="table-cell">
+                      <div className="flex flex-wrap gap-1">
+                        {(userItem as any).can_access_vault_clients && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-800">
+                            Vault
+                          </span>
+                        )}
+                        {(userItem as any).can_access_gold_clients && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                            Gold
+                          </span>
+                        )}
+                        {!(userItem as any).can_access_vault_clients && !(userItem as any).can_access_gold_clients && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+                            None
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="table-cell">
@@ -472,6 +496,42 @@ export default function UserManagementPage() {
                     <option value="admin">Admin</option>
                   </select>
                 </div>
+                
+                <div className="space-y-3">
+                  <label className="label">Client Access</label>
+                  <div className="space-y-2">
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.can_access_vault_clients}
+                        onChange={(e) => setFormData(prev => ({ ...prev, can_access_vault_clients: e.target.checked }))}
+                        className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                      />
+                      <div>
+                        <span className="text-sm font-medium text-gray-900">Vault Clients</span>
+                        <p className="text-xs text-gray-500">Allow access to vault client database</p>
+                      </div>
+                    </label>
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.can_access_gold_clients}
+                        onChange={(e) => setFormData(prev => ({ ...prev, can_access_gold_clients: e.target.checked }))}
+                        className="w-4 h-4 text-yellow-600 border-gray-300 rounded focus:ring-yellow-500"
+                      />
+                      <div>
+                        <span className="text-sm font-medium text-gray-900">Gold Clients</span>
+                        <p className="text-xs text-gray-500">Allow access to gold client database</p>
+                      </div>
+                    </label>
+                  </div>
+                  {!formData.can_access_vault_clients && !formData.can_access_gold_clients && (
+                    <p className="text-xs text-danger-600 mt-1">
+                      ⚠️ Warning: User must have access to at least one client type
+                    </p>
+                  )}
+                </div>
+                
                 <div className="flex justify-end space-x-3 pt-4">
                   <button
                     type="button"
