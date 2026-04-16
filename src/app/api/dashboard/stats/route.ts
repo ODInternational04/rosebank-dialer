@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createAdminClient } from '@/lib/supabase'
 import { verifyToken, extractTokenFromHeader } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
+    const supabase = createAdminClient()
     const authHeader = request.headers.get('authorization')
     const token = extractTokenFromHeader(authHeader)
     

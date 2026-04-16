@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createAdminClient } from '@/lib/supabase'
 import { verifyToken, hashPassword } from '@/lib/auth'
 
 interface Params {
@@ -11,6 +11,7 @@ export async function GET(
   { params }: { params: Params }
 ) {
   try {
+    const supabase = createAdminClient()
     const token = request.headers.get('Authorization')?.replace('Bearer ', '')
     if (!token) {
       return NextResponse.json({ error: 'No token provided' }, { status: 401 })
@@ -95,6 +96,7 @@ export async function PUT(
   { params }: { params: Params }
 ) {
   try {
+    const supabase = createAdminClient()
     const token = request.headers.get('Authorization')?.replace('Bearer ', '')
     if (!token) {
       return NextResponse.json({ error: 'No token provided' }, { status: 401 })
@@ -197,6 +199,7 @@ export async function DELETE(
   { params }: { params: Params }
 ) {
   try {
+    const supabase = createAdminClient()
     const token = request.headers.get('Authorization')?.replace('Bearer ', '')
     if (!token) {
       return NextResponse.json({ error: 'No token provided' }, { status: 401 })
