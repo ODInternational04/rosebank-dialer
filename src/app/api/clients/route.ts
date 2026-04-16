@@ -71,19 +71,7 @@ export async function GET(request: NextRequest) {
     const start = (page - 1) * limit
     const end = start + limit - 1
 
-    // Check user's campaign access if not admin
-    let allowedCampaignIds: string[] = []
-    if (payload.role !== 'admin') {
-      const { data: userCampaigns } = await supabase
-        .from('user_campaign_assignments')
-        .select('campaign_id')
-        .eq('user_id', payload.userId)
-      
-      allowedCampaignIds = userCampaigns?.map(uc => uc.campaign_id) || []
-      
-      // Note: Users can still see clients even without campaign assignments
-      // Campaign filtering will be applied in queries if campaigns are assigned
-    }
+    // Skip campaign access checks since campaigns feature is not implemented
 
     let clientsData
     let totalCount = 0
@@ -101,12 +89,7 @@ export async function GET(request: NextRequest) {
           query = query.eq('client_type', clientType)
         }
         
-        // Apply campaign filtering
-        if (campaignId && campaignId !== 'all') {
-          query = query.eq('campaign_id', campaignId)
-        } else if (payload.role !== 'admin' && allowedCampaignIds.length > 0) {
-          query = query.in('campaign_id', allowedCampaignIds)
-        }
+        // Skip campaign filtering - campaigns feature not implemented
         
         // Apply search using OR conditions in SQL
         if (search) {
@@ -149,7 +132,6 @@ export async function GET(request: NextRequest) {
             *,
             created_by_user:users!clients_created_by_fkey(first_name, last_name),
             last_updated_by_user:users!clients_last_updated_by_fkey(first_name, last_name),
-            campaigns(id, name, department, status),
             call_logs(id, call_status, created_at, call_type)
           `, { count: 'exact' })
           .not('call_logs', 'is', null)
@@ -173,7 +155,6 @@ export async function GET(request: NextRequest) {
             *,
             created_by_user:users!clients_created_by_fkey(first_name, last_name),
             last_updated_by_user:users!clients_last_updated_by_fkey(first_name, last_name),
-            campaigns(id, name, department, status),
             call_logs(id)
           `, { count: 'exact' })
         
@@ -200,7 +181,6 @@ export async function GET(request: NextRequest) {
             *,
             created_by_user:users!clients_created_by_fkey(first_name, last_name),
             last_updated_by_user:users!clients_last_updated_by_fkey(first_name, last_name),
-            campaigns(id, name, department, status),
             call_logs(id, call_status, created_at, call_type)
           `, { count: 'exact' })
           .not('call_logs', 'is', null)
@@ -236,7 +216,6 @@ export async function GET(request: NextRequest) {
             *,
             created_by_user:users!clients_created_by_fkey(first_name, last_name),
             last_updated_by_user:users!clients_last_updated_by_fkey(first_name, last_name),
-            campaigns(id, name, department, status),
             call_logs(id, call_status, created_at, call_type)
           `, { count: 'exact' })
         

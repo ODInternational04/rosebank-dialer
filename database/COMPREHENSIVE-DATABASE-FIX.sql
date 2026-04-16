@@ -1,7 +1,7 @@
-# =============================================
-# COMPREHENSIVE DATABASE FIX SCRIPT
-# Run this FIRST in Supabase SQL Editor
-# =============================================
+-- =============================================
+-- COMPREHENSIVE DATABASE FIX SCRIPT
+-- Run this FIRST in Supabase SQL Editor
+-- =============================================
 
 -- Step 1: Disable RLS on all tables (we use JWT auth at API layer)
 ALTER TABLE users DISABLE ROW LEVEL SECURITY;
@@ -9,27 +9,23 @@ ALTER TABLE clients DISABLE ROW LEVEL SECURITY;
 ALTER TABLE call_logs DISABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications DISABLE ROW LEVEL SECURITY;
 
--- Disable RLS on other tables if they exist
+-- Disable RLS on other tables if they exist (skip views)
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'customer_feedback') THEN
+    -- Only disable RLS on actual tables, not views
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'customer_feedback' AND table_type = 'BASE TABLE') THEN
         ALTER TABLE customer_feedback DISABLE ROW LEVEL SECURITY;
     END IF;
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'campaigns') THEN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'campaigns' AND table_type = 'BASE TABLE') THEN
         ALTER TABLE campaigns DISABLE ROW LEVEL SECURITY;
     END IF;
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_campaign_assignments') THEN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_campaign_assignments' AND table_type = 'BASE TABLE') THEN
         ALTER TABLE user_campaign_assignments DISABLE ROW LEVEL SECURITY;
     END IF;
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'audit_logs') THEN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'audit_logs' AND table_type = 'BASE TABLE') THEN
         ALTER TABLE audit_logs DISABLE ROW LEVEL SECURITY;
     END IF;
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'gold_clients') THEN
-        ALTER TABLE gold_clients DISABLE ROW LEVEL SECURITY;
-    END IF;
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'vault_clients') THEN
-        ALTER TABLE vault_clients DISABLE ROW LEVEL SECURITY;
-    END IF;
+    -- Note: gold_clients and vault_clients are views, not tables, so we skip them
 END $$;
 
 -- Step 2: Drop ALL existing RLS policies to prevent recursion
