@@ -196,49 +196,68 @@ CREATE POLICY "Users can delete notifications" ON notifications
 -- CUSTOMER FEEDBACK TABLE POLICIES (if exists)
 -- =============================================
 
--- Users can view feedback for clients they've called or admins can view all
-CREATE POLICY "Users can view customer feedback" ON customer_feedback
-    FOR SELECT USING (
-        EXISTS (
-            SELECT 1 FROM call_logs 
-            WHERE client_id = customer_feedback.client_id 
-            AND user_id = auth.uid()
-        ) OR
-        EXISTS (
-            SELECT 1 FROM users 
-            WHERE id = auth.uid() AND role = 'admin'
-        )
-    );
+-- Apply policies only if customer_feedback table exists
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'customer_feedback') THEN
+        -- Enable RLS if not already enabled
+        ALTER TABLE customer_feedback ENABLE ROW LEVEL SECURITY;
+        
+        -- Drop existing policies if they exist
+        DROP POLICY IF EXISTS "Users can view customer feedback" ON customer_feedback;
+        DROP POLICY IF EXISTS "Users can create customer feedback" ON customer_feedback;
+        DROP POLICY IF EXISTS "Users can update customer feedback" ON customer_feedback;
+        DROP POLICY IF EXISTS "Only admins can delete customer feedback" ON customer_feedback;
+        
+        -- Users can view feedback for clients they've called or admins can view all
+        CREATE POLICY "Users can view customer feedback" ON customer_feedback
+            FOR SELECT USING (
+                EXISTS (
+                    SELECT 1 FROM call_logs 
+                    WHERE client_id = customer_feedback.client_id 
+                    AND user_id = auth.uid()
+                ) OR
+                EXISTS (
+                    SELECT 1 FROM users 
+                    WHERE id = auth.uid() AND role = 'admin'
+                )
+            );
 
--- Users can create feedback for clients they've called
-CREATE POLICY "Users can create customer feedback" ON customer_feedback
-    FOR INSERT WITH CHECK (
-        EXISTS (
-            SELECT 1 FROM call_logs 
-            WHERE client_id = customer_feedback.client_id 
-            AND user_id = auth.uid()
-        ) AND
-        auth.role() = 'authenticated'
-    );
+        -- Users can create feedback for clients they've called
+        CREATE POLICY "Users can create customer feedback" ON customer_feedback
+            FOR INSERT WITH CHECK (
+                EXISTS (
+                    SELECT 1 FROM call_logs 
+                    WHERE client_id = customer_feedback.client_id 
+                    AND user_id = auth.uid()
+                ) AND
+                auth.role() = 'authenticated'
+            );
 
--- Users can update feedback they created or admins can update any
-CREATE POLICY "Users can update customer feedback" ON customer_feedback
-    FOR UPDATE USING (
-        user_id = auth.uid() OR
-        EXISTS (
-            SELECT 1 FROM users 
-            WHERE id = auth.uid() AND role = 'admin'
-        )
-    );
+        -- Users can update feedback they created or admins can update any
+        CREATE POLICY "Users can update customer feedback" ON customer_feedback
+            FOR UPDATE USING (
+                user_id = auth.uid() OR
+                EXISTS (
+                    SELECT 1 FROM users 
+                    WHERE id = auth.uid() AND role = 'admin'
+                )
+            );
 
--- Only admins can delete feedback
-CREATE POLICY "Only admins can delete customer feedback" ON customer_feedback
-    FOR DELETE USING (
-        EXISTS (
-            SELECT 1 FROM users 
-            WHERE id = auth.uid() AND role = 'admin'
-        )
-    );
+        -- Only admins can delete feedback
+        CREATE POLICY "Only admins can delete customer feedback" ON customer_feedback
+            FOR DELETE USING (
+                EXISTS (
+                    SELECT 1 FROM users 
+                    WHERE id = auth.uid() AND role = 'admin'
+                )
+            );
+            
+        RAISE NOTICE '✅ Customer feedback policies applied';
+    ELSE
+        RAISE NOTICE '⚠️  Customer feedback table not found - skipping policies (run customer-feedback-schema.sql first)';
+    END IF;
+END $$;
 
 -- =============================================
 -- AUDIT LOGGING SYSTEM
