@@ -41,20 +41,20 @@ DROP POLICY IF EXISTS "Users can delete notifications" ON notifications;
 -- Users can view their own profile or admins can view all
 CREATE POLICY "Users can view profiles" ON users
     FOR SELECT USING (
-        auth.uid()::text = id OR 
+        auth.uid() = id OR 
         EXISTS (
             SELECT 1 FROM users 
-            WHERE id = auth.uid()::text AND role = 'admin'
+            WHERE id = auth.uid() AND role = 'admin'
         )
     );
 
 -- Users can update their own profile (except role), admins can update everything
 CREATE POLICY "Users can update profiles" ON users
     FOR UPDATE USING (
-        (auth.uid()::text = id AND role = (SELECT role FROM users WHERE id = auth.uid()::text)) OR
+        (auth.uid() = id AND role = (SELECT role FROM users WHERE id = auth.uid())) OR
         EXISTS (
             SELECT 1 FROM users 
-            WHERE id = auth.uid()::text AND role = 'admin'
+            WHERE id = auth.uid() AND role = 'admin'
         )
     );
 
@@ -63,7 +63,7 @@ CREATE POLICY "Only admins can create users" ON users
     FOR INSERT WITH CHECK (
         EXISTS (
             SELECT 1 FROM users 
-            WHERE id = auth.uid()::text AND role = 'admin'
+            WHERE id = auth.uid() AND role = 'admin'
         )
     );
 
@@ -72,7 +72,7 @@ CREATE POLICY "Only admins can delete users" ON users
     FOR DELETE USING (
         EXISTS (
             SELECT 1 FROM users 
-            WHERE id = auth.uid()::text AND role = 'admin'
+            WHERE id = auth.uid() AND role = 'admin'
         )
     );
 
@@ -91,10 +91,10 @@ CREATE POLICY "Authenticated users can create clients" ON clients
 -- Users can update clients they created, admins can update any
 CREATE POLICY "Users can update clients" ON clients
     FOR UPDATE USING (
-        created_by = auth.uid()::text OR
+        created_by = auth.uid() OR
         EXISTS (
             SELECT 1 FROM users 
-            WHERE id = auth.uid()::text AND role = 'admin'
+            WHERE id = auth.uid() AND role = 'admin'
         )
     );
 
@@ -103,7 +103,7 @@ CREATE POLICY "Only admins can delete clients" ON clients
     FOR DELETE USING (
         EXISTS (
             SELECT 1 FROM users 
-            WHERE id = auth.uid()::text AND role = 'admin'
+            WHERE id = auth.uid() AND role = 'admin'
         )
     );
 
@@ -114,37 +114,37 @@ CREATE POLICY "Only admins can delete clients" ON clients
 -- Users can view their own call logs or admins can view all
 CREATE POLICY "Users can view call logs" ON call_logs
     FOR SELECT USING (
-        user_id = auth.uid()::text OR 
+        user_id = auth.uid() OR 
         EXISTS (
             SELECT 1 FROM users 
-            WHERE id = auth.uid()::text AND role = 'admin'
+            WHERE id = auth.uid() AND role = 'admin'
         )
     );
 
 -- Users can create their own call logs
 CREATE POLICY "Users can create call logs" ON call_logs
     FOR INSERT WITH CHECK (
-        user_id = auth.uid()::text AND
+        user_id = auth.uid() AND
         auth.role() = 'authenticated'
     );
 
 -- Users can update their own call logs or admins can update any
 CREATE POLICY "Users can update call logs" ON call_logs
     FOR UPDATE USING (
-        user_id = auth.uid()::text OR
+        user_id = auth.uid() OR
         EXISTS (
             SELECT 1 FROM users 
-            WHERE id = auth.uid()::text AND role = 'admin'
+            WHERE id = auth.uid() AND role = 'admin'
         )
     );
 
 -- Users can delete their own call logs or admins can delete any
 CREATE POLICY "Users can delete call logs" ON call_logs
     FOR DELETE USING (
-        user_id = auth.uid()::text OR
+        user_id = auth.uid() OR
         EXISTS (
             SELECT 1 FROM users 
-            WHERE id = auth.uid()::text AND role = 'admin'
+            WHERE id = auth.uid() AND role = 'admin'
         )
     );
 
@@ -155,40 +155,40 @@ CREATE POLICY "Users can delete call logs" ON call_logs
 -- Users can view their own notifications or admins can view all
 CREATE POLICY "Users can view notifications" ON notifications
     FOR SELECT USING (
-        user_id = auth.uid()::text OR 
+        user_id = auth.uid() OR 
         EXISTS (
             SELECT 1 FROM users 
-            WHERE id = auth.uid()::text AND role = 'admin'
+            WHERE id = auth.uid() AND role = 'admin'
         )
     );
 
 -- Users can create notifications for themselves, admins can create for anyone
 CREATE POLICY "Users can create notifications" ON notifications
     FOR INSERT WITH CHECK (
-        (user_id = auth.uid()::text AND auth.role() = 'authenticated') OR
+        (user_id = auth.uid() AND auth.role() = 'authenticated') OR
         EXISTS (
             SELECT 1 FROM users 
-            WHERE id = auth.uid()::text AND role = 'admin'
+            WHERE id = auth.uid() AND role = 'admin'
         )
     );
 
 -- Users can update their own notifications or admins can update any
 CREATE POLICY "Users can update notifications" ON notifications
     FOR UPDATE USING (
-        user_id = auth.uid()::text OR
+        user_id = auth.uid() OR
         EXISTS (
             SELECT 1 FROM users 
-            WHERE id = auth.uid()::text AND role = 'admin'
+            WHERE id = auth.uid() AND role = 'admin'
         )
     );
 
 -- Users can delete their own notifications or admins can delete any
 CREATE POLICY "Users can delete notifications" ON notifications
     FOR DELETE USING (
-        user_id = auth.uid()::text OR
+        user_id = auth.uid() OR
         EXISTS (
             SELECT 1 FROM users 
-            WHERE id = auth.uid()::text AND role = 'admin'
+            WHERE id = auth.uid() AND role = 'admin'
         )
     );
 
@@ -202,11 +202,11 @@ CREATE POLICY "Users can view customer feedback" ON customer_feedback
         EXISTS (
             SELECT 1 FROM call_logs 
             WHERE client_id = customer_feedback.client_id 
-            AND user_id = auth.uid()::text
+            AND user_id = auth.uid()
         ) OR
         EXISTS (
             SELECT 1 FROM users 
-            WHERE id = auth.uid()::text AND role = 'admin'
+            WHERE id = auth.uid() AND role = 'admin'
         )
     );
 
@@ -216,7 +216,7 @@ CREATE POLICY "Users can create customer feedback" ON customer_feedback
         EXISTS (
             SELECT 1 FROM call_logs 
             WHERE client_id = customer_feedback.client_id 
-            AND user_id = auth.uid()::text
+            AND user_id = auth.uid()
         ) AND
         auth.role() = 'authenticated'
     );
@@ -224,10 +224,10 @@ CREATE POLICY "Users can create customer feedback" ON customer_feedback
 -- Users can update feedback they created or admins can update any
 CREATE POLICY "Users can update customer feedback" ON customer_feedback
     FOR UPDATE USING (
-        created_by = auth.uid()::text OR
+        user_id = auth.uid() OR
         EXISTS (
             SELECT 1 FROM users 
-            WHERE id = auth.uid()::text AND role = 'admin'
+            WHERE id = auth.uid() AND role = 'admin'
         )
     );
 
@@ -236,7 +236,7 @@ CREATE POLICY "Only admins can delete customer feedback" ON customer_feedback
     FOR DELETE USING (
         EXISTS (
             SELECT 1 FROM users 
-            WHERE id = auth.uid()::text AND role = 'admin'
+            WHERE id = auth.uid() AND role = 'admin'
         )
     );
 
@@ -277,7 +277,7 @@ CREATE POLICY "Only admins can view audit logs" ON audit_logs
     FOR SELECT USING (
         EXISTS (
             SELECT 1 FROM users 
-            WHERE id = auth.uid()::text AND role = 'admin'
+            WHERE id = auth.uid() AND role = 'admin'
         )
     );
 
@@ -305,7 +305,7 @@ BEGIN
     -- Get user information
     SELECT u.email, u.role INTO user_info
     FROM users u
-    WHERE u.id = auth.uid()::text;
+    WHERE u.id = auth.uid();
     
     -- Insert audit record
     INSERT INTO audit_logs (
@@ -390,7 +390,7 @@ RETURNS BOOLEAN AS $$
 BEGIN
     RETURN EXISTS (
         SELECT 1 FROM users 
-        WHERE id = auth.uid()::text AND role = 'admin'
+        WHERE id = auth.uid() AND role = 'admin'
     );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -401,7 +401,7 @@ RETURNS TEXT AS $$
 BEGIN
     RETURN (
         SELECT role FROM users 
-        WHERE id = auth.uid()::text
+        WHERE id = auth.uid()
     );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -427,7 +427,7 @@ BEGIN
         new_data, created_at
     ) VALUES (
         'audit_logs', 'CLEANUP', auth.uid(), 
-        (SELECT email FROM users WHERE id = auth.uid()::text),
+        (SELECT email FROM users WHERE id = auth.uid()),
         'admin',
         json_build_object('deleted_count', deleted_count, 'days_kept', days_to_keep),
         NOW()
