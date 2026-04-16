@@ -20,7 +20,7 @@ BEGIN
             is_active
         ) VALUES (
             'admin@rosebank.com',
-            '$2a$14$XQHvZ7z8xF8YqY5tW9K3C.qvXL7YJ7VLJr7O5Y3X3L8zY7VL7J7VL', -- Password: admin123
+            '$2a$10$ixLHDspkrU0Z8hZn4ioenuaxMyExXRuYMe1tZHMb7DcT1TTw.vtBy', -- Password: admin123
             'Admin',
             'User',
             'admin',
