@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createAdminClient } from '@/lib/supabase'
 import { verifyPassword, generateToken, validatePasswordStrength } from '@/lib/auth'
 import { validateInput, loginValidationSchema, sanitizeObject } from '@/lib/validation'
 import { createSession } from '@/lib/session'
@@ -102,7 +102,8 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      // Find user by email
+      // Find user by email (using admin client to bypass RLS)
+      const supabase = createAdminClient()
       const { data: user, error: userError } = await supabase
         .from('users')
         .select('id, email, password_hash, first_name, last_name, role, is_active, last_login, created_at, can_access_vault_clients, can_access_gold_clients')
