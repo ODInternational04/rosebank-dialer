@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createAdminClient } from '@/lib/supabase'
 import { verifyToken, extractTokenFromHeader } from '@/lib/auth'
 import { validateInput, clientValidationSchema, sanitizeObject } from '@/lib/validation'
 import { CreateClientRequest } from '@/types'
@@ -10,6 +10,9 @@ import { CreateClientRequest } from '@/types'
  */
 export async function GET(request: NextRequest) {
   try {
+    // Use admin client to bypass RLS
+    const supabase = createAdminClient()
+    
     // Authentication
     const authHeader = request.headers.get('authorization')
     const token = extractTokenFromHeader(authHeader)
@@ -298,6 +301,9 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    // Use admin client to bypass RLS
+    const supabase = createAdminClient()
+    
     // Authentication
     const authHeader = request.headers.get('authorization')
     const token = extractTokenFromHeader(authHeader)
