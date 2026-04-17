@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useRealTime } from '@/contexts/RealTimeContext'
 import CallLogModal from '@/components/modals/CallLogModal'
 import ClientCreateModal from '@/components/modals/ClientCreateModal'
-import ClientUploadModal from '@/components/modals/ClientUploadModal'
+import BulkUploadModal from '@/components/BulkUploadModal'
 import ThreeCXCallButton from '@/components/ThreeCXCallButton'
 import QuickCallButton from '@/components/QuickCallButton'
 import { Client, CallLog, CreateCallLogRequest } from '@/types'
@@ -80,7 +80,6 @@ export default function ClientsPage() {
   const [callEndedManually, setCallEndedManually] = useState(false)
   const [forceEnd3CXCall, setForceEnd3CXCall] = useState<Record<string, boolean>>({})
   const [showFilterPanel, setShowFilterPanel] = useState(false)
-  const [uploadPreview, setUploadPreview] = useState<{ headers: string[]; rows: string[][]; fileName: string } | null>(null)
 
   // Ref for search input to maintain focus
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -191,11 +190,6 @@ export default function ClientsPage() {
       console.error('Error fetching call logs:', error)
     }
   }
-
-  const handleUploadParsed = useCallback((preview: { headers: string[]; rows: string[][]; fileName: string }) => {
-    setUploadPreview(preview)
-    setShowUploadModal(false)
-  }, [])
 
   // 3CX Integration Handlers
   const handle3CXCallStart = useCallback(async (callSession: CallSession) => {
@@ -585,13 +579,16 @@ export default function ClientsPage() {
               <FunnelIcon className="w-5 h-5 mr-2" />
               Filters
             </button>
-            <button
-              onClick={() => setShowUploadModal(true)}
-              className="btn btn-secondary"
-            >
-              <ArrowUpTrayIcon className="w-5 h-5 mr-2" />
-              Upload Clients
-            </button>
+            {isAdmin && (
+              <button
+                onClick={() => setShowUploadModal(true)}
+                className="btn btn-secondary"
+                title="Bulk upload clients from Excel or CSV"
+              >
+                <ArrowUpTrayIcon className="w-5 h-5 mr-2" />
+                Bulk Upload
+              </button>
+            )}
             <QuickCallButton onCallComplete={fetchClients} />
             <button
               onClick={() => {
@@ -605,52 +602,6 @@ export default function ClientsPage() {
             </button>
           </div>
         </div>
-
-        {uploadPreview && (
-          <div className="card p-4">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Latest Upload Preview</h3>
-                <p className="text-sm text-gray-600">
-                  {uploadPreview.fileName} • {uploadPreview.rows.length} rows • {uploadPreview.headers.length} columns
-                </p>
-              </div>
-              <button
-                onClick={() => setUploadPreview(null)}
-                className="btn btn-secondary"
-              >
-                Clear Preview
-              </button>
-            </div>
-            <div className="mt-4 overflow-auto max-h-96 border rounded-lg">
-              <table className="min-w-full text-sm">
-                <thead className="bg-gray-50 sticky top-0">
-                  <tr>
-                    {uploadPreview.headers.map((header, index) => (
-                      <th
-                        key={`${header}-${index}`}
-                        className="px-3 py-2 text-left font-semibold text-gray-700 border-b"
-                      >
-                        {header}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {uploadPreview.rows.map((row, rowIndex) => (
-                    <tr key={`preview-row-${rowIndex}`} className={rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                      {uploadPreview.headers.map((_, cellIndex) => (
-                        <td key={`preview-cell-${rowIndex}-${cellIndex}`} className="px-3 py-2 text-gray-700 border-b">
-                          {row[cellIndex] || ''}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
 
         {/* Filter Statistics Cards */}
         
@@ -1196,12 +1147,14 @@ export default function ClientsPage() {
         />
       )}
 
-      {/* Client Upload Modal */}
+      {/* Bulk Upload Modal */}
       {showUploadModal && (
-        <ClientUploadModal
-          isOpen={showUploadModal}
+        <BulkUploadModal
           onClose={() => setShowUploadModal(false)}
-          onParsed={handleUploadParsed}
+          onSuccess={() => {
+            setShowUploadModal(false)
+            fetchClients()
+          }}
         />
       )}
       

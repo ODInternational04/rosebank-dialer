@@ -1,0 +1,4 @@
+box_number,size,contract_no,principal_key_holder,principal_key_holder_id_number,principal_key_holder_email_address,telephone_cell,telephone_home,contract_start_date,contract_end_date,occupation,notes
+BOX001,Small,CONTRACT001,John Smith,1234567890123,john.smith@email.com,0821234567,0117654321,2024-01-01,2025-01-01,Engineer,VIP Client
+BOX002,Medium,CONTRACT002,Jane Doe,9876543210987,jane.doe@email.com,0829876543,0118765432,2024-02-01,2025-02-01,Teacher,Regular client
+BOX003,Large,CONTRACT003,Bob Johnson,5555555555555,bob.johnson@email.com,0825555555,,2024-03-01,2025-03-01,Doctor,
