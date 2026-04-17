@@ -152,12 +152,44 @@ export default function BulkUploadModal({ onClose, onSuccess }: BulkUploadModalP
     setUploading(true)
 
     try {
+      // Helper function to convert Excel serial date to YYYY-MM-DD format
+      const excelDateToString = (value: any): string | null => {
+        if (!value) return null
+        
+        // If already a valid date string, return it
+        if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+          return value
+        }
+        
+        // If it's an Excel serial number
+        if (typeof value === 'number' || !isNaN(Number(value))) {
+          const excelEpoch = new Date(1899, 11, 30) // Excel's epoch
+          const days = Math.floor(Number(value))
+          const date = new Date(excelEpoch.getTime() + days * 86400000)
+          
+          const year = date.getFullYear()
+          const month = String(date.getMonth() + 1).padStart(2, '0')
+          const day = String(date.getDate()).padStart(2, '0')
+          
+          return `${year}-${month}-${day}`
+        }
+        
+        return null
+      }
+
       // Transform CSV data to match database schema
       const transformedData = csvData.map(row => {
         const transformed: any = { client_type: clientType }
         fieldMappings.forEach(mapping => {
           if (mapping.dbField && row[mapping.csvField]) {
-            transformed[mapping.dbField] = row[mapping.csvField]
+            const value = row[mapping.csvField]
+            
+            // Convert date fields from Excel serial numbers
+            if (mapping.dbField === 'contract_start_date' || mapping.dbField === 'contract_end_date') {
+              transformed[mapping.dbField] = excelDateToString(value)
+            } else {
+              transformed[mapping.dbField] = value
+            }
           }
         })
         return transformed
