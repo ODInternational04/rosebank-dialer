@@ -28,10 +28,43 @@ Supported formats:
 ### 4. Upsert Logic
 - **New clients**: Inserted into database
 - **Existing clients**: Updated with new data
-  - Vault: Matched by `box_number` or `contract_no`
-  - Gold: Matched by `email` + `phone` combination
+  - **Custom matching**: You choose which fields to match on (Step 2 of upload wizard)
+  - **Match logic**: ALL selected fields must match (AND logic)
+  - **Default matching** (if no fields selected):
+    - Vault: Matched by `box_number` or `contract_no`
+    - Gold: Matched by `email` + `phone` combination
 
-### 5. Results Dashboard
+### 5. Custom Match Fields Selection
+**New Feature!** Choose exactly which fields to use for identifying existing clients:
+
+**How it works:**
+- During Step 2 of upload, select one or more fields to match on
+- If ALL selected fields match an existing client, that client will be updated
+- If no match is found, a new client is created
+- If no fields are selected, all records are treated as new clients
+
+**Available match fields:**
+- Box Number (vault only)
+- Contract Number (vault only)
+- Name/Key Holder
+- ID Number
+- Email Address
+- Cell Phone
+
+**Common matching strategies:**
+- **Email + Phone**: Safest option, catches most duplicates
+- **Email only**: Good if phone numbers change frequently
+- **Box Number** or **Contract Number**: Best for vault clients with unique identifiers
+- **ID Number + Email**: Strictest matching for high-confidence updates
+- **No selection**: Import all as new (useful for initial bulk loads)
+
+**Example scenarios:**
+1. **Updating client contact info**: Select "Email" only - finds clients by email and updates their phone/address
+2. **Syncing from external system**: Select "Contract Number" - ensures vault clients with same contract are updated
+3. **Merging multiple sources**: Select "Email + Phone" - only updates when both match, reducing false positives
+4. **Fresh import**: Don't select any fields - treats everything as new clients
+
+### 6. Results Dashboard
 After upload, see:
 - Number of new clients inserted
 - Number of existing clients updated
@@ -50,11 +83,19 @@ After upload, see:
 
 ### Step 2: Upload Process
 1. Click **"Bulk Upload"** button on Clients page
-2. Select client type (Vault or Gold)
-3. Click **"Choose File"** and select your file
-4. System automatically parses and shows field mapping
-5. Review/adjust column mappings
-6. Click **"Upload X Clients"**
+2. **Select client type** (Vault or Gold)
+3. **Choose match fields** - Select which field(s) to use for identifying existing clients:
+   - No fields selected = All records treated as new clients
+   - One or more fields = System will search for matches using ALL selected fields (AND logic)
+   - Common choices:
+     - Email + Phone (recommended for most cases)
+     - Box Number (for vault clients)
+     - Contract Number (for vault clients)
+     - ID Number + Email (for strict matching)
+4. Click **"Choose File"** and select your file
+5. System automatically parses and shows field mapping
+6. Review/adjust column mappings
+7. Click **"Upload X Clients"**
 
 ### Step 3: Review Results
 - Green = Successfully inserted
@@ -114,11 +155,17 @@ After upload, see:
 - System processes row-by-row to prevent memory issues
 
 ### Updating Existing Clients
-The system will update existing clients when:
-- **Vault**: `box_number` OR `contract_no` matches
-- **Gold**: `email` AND `phone` both match
+The system will update existing clients based on your selected match fields (Step 2 of upload wizard):
+- **Custom matching**: Updates when ALL selected fields match
+- **Default matching** (if no fields selected):
+  - **Vault**: `box_number` OR `contract_no` matches
+  - **Gold**: `email` AND `phone` both match
 
 Only fields present in your upload will be updated. Empty cells won't overwrite existing data.
+
+**Tip**: Select match fields carefully:
+- More fields = Stricter matching (fewer false positives, may miss some updates)
+- Fewer fields = Looser matching (catches more updates, risk of false positives)
 
 ## Error Handling
 
@@ -201,6 +248,18 @@ Response:
 - Verify required fields are mapped
 - Check data format matches requirements
 - Review error messages in results screen
+
+### Clients not updating as expected
+- Check which match fields you selected in Step 2
+- Ensure the match field values in your file exactly match the database
+- Remember: ALL selected fields must match (AND logic)
+- Try using fewer/different match fields
+- If unsure, use "Email + Phone" as a safe default
+
+### Too many duplicates created
+- You may not have selected match fields
+- Try re-uploading with appropriate match fields selected
+- Use "Email + Phone" to catch most duplicates
 
 ## Support
 
