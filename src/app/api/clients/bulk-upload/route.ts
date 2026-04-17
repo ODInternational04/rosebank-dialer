@@ -50,7 +50,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { clients, clientType } = body as { clients: BulkClientData[], clientType: 'vault' | 'gold' }
+    const { clients, clientType, matchFields } = body as { 
+      clients: BulkClientData[], 
+      clientType: 'vault' | 'gold',
+      matchFields?: string[]
+    }
 
     if (!clients || !Array.isArray(clients) || clients.length === 0) {
       return NextResponse.json({ error: 'No client data provided' }, { status: 400 })
@@ -134,30 +138,50 @@ export async function POST(request: NextRequest) {
           preparedData.occupation = ''
         }
 
-        // Check if client exists based on unique identifiers
+        // Check if client exists based on match fields
         let existingClient = null
         
-        if (clientType === 'vault') {
-          // For vault: check by box_number or contract_no
-          const { data: existing } = await supabase
-            .from('clients')
-            .select('id, box_number, contract_no')
-            .eq('client_type', 'vault')
-            .or(`box_number.eq.${clientData.box_number},contract_no.eq.${clientData.contract_no}`)
-            .single()
-          
-          existingClient = existing
-        } else {
-          // For gold: check by email and phone combination
-          const { data: existing } = await supabase
+        if (matchFields && matchFields.length > 0) {
+          // Use custom match fields
+          let query = supabase
             .from('clients')
             .select('id')
-            .eq('client_type', 'gold')
-            .eq('principal_key_holder_email_address', clientData.principal_key_holder_email_address)
-            .eq('telephone_cell', clientData.telephone_cell)
-            .single()
+            .eq('client_type', clientType)
           
+          // Build the query with all match conditions (AND logic)
+          matchFields.forEach(field => {
+            const value = clientData[field as keyof BulkClientData] || preparedData[field]
+            if (value) {
+              query = query.eq(field, value)
+            }
+          })
+          
+          const { data: existing } = await query.single()
           existingClient = existing
+        } else {
+          // Default matching logic (for backwards compatibility)
+          if (clientType === 'vault') {
+            // For vault: check by box_number or contract_no
+            const { data: existing } = await supabase
+              .from('clients')
+              .select('id, box_number, contract_no')
+              .eq('client_type', 'vault')
+              .or(`box_number.eq.${clientData.box_number},contract_no.eq.${clientData.contract_no}`)
+              .single()
+            
+            existingClient = existing
+          } else {
+            // For gold: check by email and phone combination
+            const { data: existing } = await supabase
+              .from('clients')
+              .select('id')
+              .eq('client_type', 'gold')
+              .eq('principal_key_holder_email_address', clientData.principal_key_holder_email_address)
+              .eq('telephone_cell', clientData.telephone_cell)
+              .single()
+            
+            existingClient = existing
+          }
         }
 
         if (existingClient) {

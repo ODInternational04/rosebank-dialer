@@ -56,8 +56,9 @@ const GOLD_FIELDS = [
 ]
 
 export default function BulkUploadModal({ onClose, onSuccess }: BulkUploadModalProps) {
-  const [step, setStep] = useState(1) // 1: Select type, 2: Upload file, 3: Map fields, 4: Results
+  const [step, setStep] = useState(1) // 1: Select type, 2: Match fields, 3: Upload file, 4: Map fields, 5: Results
   const [clientType, setClientType] = useState<'vault' | 'gold'>('vault')
+  const [matchFields, setMatchFields] = useState<string[]>([]) // Fields to match on for updates
   const [file, setFile] = useState<File | null>(null)
   const [csvData, setCsvData] = useState<any[]>([])
   const [csvHeaders, setCsvHeaders] = useState<string[]>([])
@@ -66,6 +67,11 @@ export default function BulkUploadModal({ onClose, onSuccess }: BulkUploadModalP
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null)
 
   const availableFields = clientType === 'vault' ? VAULT_FIELDS : GOLD_FIELDS
+  
+  // Get matchable fields (exclude notes and optional fields that aren't good for matching)
+  const matchableFields = availableFields.filter(f => 
+    !['notes', 'size', 'occupation', 'telephone_home', 'contract_start_date', 'contract_end_date'].includes(f.value)
+  )
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
@@ -109,7 +115,7 @@ export default function BulkUploadModal({ onClose, onSuccess }: BulkUploadModalP
             }
           })
           setFieldMappings(autoMappings)
-          setStep(3)
+          setStep(4)
         }
       } catch (error) {
         console.error('Error parsing file:', error)
@@ -131,6 +137,14 @@ export default function BulkUploadModal({ onClose, onSuccess }: BulkUploadModalP
           ? { ...mapping, dbField } 
           : mapping
       )
+    )
+  }
+
+  const toggleMatchField = (field: string) => {
+    setMatchFields(prev => 
+      prev.includes(field) 
+        ? prev.filter(f => f !== field)
+        : [...prev, field]
     )
   }
 
@@ -158,7 +172,8 @@ export default function BulkUploadModal({ onClose, onSuccess }: BulkUploadModalP
         },
         body: JSON.stringify({
           clients: transformedData,
-          clientType
+          clientType,
+          matchFields: matchFields.length > 0 ? matchFields : undefined
         })
       })
 
@@ -166,7 +181,7 @@ export default function BulkUploadModal({ onClose, onSuccess }: BulkUploadModalP
       
       if (response.ok) {
         setUploadResult(result)
-        setStep(4)
+        setStep(5)
         if (result.details.processed > 0) {
           setTimeout(() => {
             onSuccess()
@@ -200,10 +215,11 @@ export default function BulkUploadModal({ onClose, onSuccess }: BulkUploadModalP
               Bulk Upload Clients
             </h2>
             <p className="text-sm text-gray-600 mt-1">
-              Step {step} of 4 - {
+              Step {step} of 5 - {
                 step === 1 ? 'Select Client Type' :
-                step === 2 ? 'Upload File' :
-                step === 3 ? 'Map Fields' :
+                step === 2 ? 'Choose Match Fields' :
+                step === 3 ? 'Upload File' :
+                step === 4 ? 'Map Fields' :
                 'Upload Results'
               }
             </p>
@@ -266,14 +282,85 @@ export default function BulkUploadModal({ onClose, onSuccess }: BulkUploadModalP
 
               <div className="flex justify-end">
                 <button onClick={() => setStep(2)} className="btn btn-primary">
+                  Next: Choose Match Fields
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Choose Match Fields */}
+          {step === 2 && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Choose Fields to Match On</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Select which field(s) to use for identifying existing clients. If a match is found, the client will be updated instead of creating a duplicate.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="font-medium text-gray-700">Select Match Criteria:</h4>
+                {matchableFields.map((field) => (
+                  <label 
+                    key={field.value}
+                    className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={matchFields.includes(field.value)}
+                      onChange={() => toggleMatchField(field.value)}
+                      className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                    />
+                    <div className="flex-1">
+                      <span className="font-medium text-gray-900">{field.label.replace(' *', '')}</span>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {field.value === 'box_number' && 'Unique box identifier'}
+                        {field.value === 'contract_no' && 'Unique contract number'}
+                        {field.value === 'principal_key_holder' && 'Client name'}
+                        {field.value === 'principal_key_holder_id_number' && 'ID/Passport number'}
+                        {field.value === 'principal_key_holder_email_address' && 'Email address'}
+                        {field.value === 'telephone_cell' && 'Mobile phone number'}
+                      </p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+
+              {matchFields.length === 0 && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-sm text-blue-800">
+                    ℹ️ <strong>No match fields selected:</strong> All records will be treated as new clients. 
+                    Select one or more fields to enable updating existing clients.
+                  </p>
+                </div>
+              )}
+
+              {matchFields.length > 0 && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <p className="text-sm text-green-800">
+                    ✓ <strong>Match criteria:</strong> Clients matching on <strong>{matchFields.length > 1 ? 'ALL' : ''}</strong> selected field{matchFields.length > 1 ? 's' : ''} will be updated:
+                  </p>
+                  <ul className="text-sm text-green-700 mt-2 ml-4 list-disc">
+                    {matchFields.map(field => (
+                      <li key={field}>{matchableFields.find(f => f.value === field)?.label.replace(' *', '')}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="flex justify-between">
+                <button onClick={() => setStep(1)} className="btn btn-secondary">
+                  Back
+                </button>
+                <button onClick={() => setStep(3)} className="btn btn-primary">
                   Next: Upload File
                 </button>
               </div>
             </div>
           )}
 
-          {/* Step 2: Upload File */}
-          {step === 2 && (
+          {/* Step 3: Upload File */}
+          {step === 3 && (
             <div className="space-y-6">
               <div>
                 <h3 className="text-lg font-semibold mb-4">Upload Excel or CSV File</h3>
@@ -308,15 +395,15 @@ export default function BulkUploadModal({ onClose, onSuccess }: BulkUploadModalP
               </div>
 
               <div className="flex justify-between">
-                <button onClick={() => setStep(1)} className="btn btn-secondary">
+                <button onClick={() => setStep(2)} className="btn btn-secondary">
                   Back
                 </button>
               </div>
             </div>
           )}
 
-          {/* Step 3: Map Fields */}
-          {step === 3 && (
+          {/* Step 4: Map Fields */}
+          {step === 4 && (
             <div className="space-y-6">
               <div>
                 <h3 className="text-lg font-semibold mb-2">Map Your Columns</h3>
@@ -363,7 +450,7 @@ export default function BulkUploadModal({ onClose, onSuccess }: BulkUploadModalP
               )}
 
               <div className="flex justify-between">
-                <button onClick={() => setStep(2)} className="btn btn-secondary">
+                <button onClick={() => setStep(3)} className="btn btn-secondary">
                   Back
                 </button>
                 <button 
@@ -377,8 +464,8 @@ export default function BulkUploadModal({ onClose, onSuccess }: BulkUploadModalP
             </div>
           )}
 
-          {/* Step 4: Results */}
-          {step === 4 && uploadResult && (
+          {/* Step 5: Results */}
+          {step === 5 && uploadResult && (
             <div className="space-y-6">
               <div className="text-center">
                 {uploadResult.success ? (
