@@ -29,7 +29,8 @@ class EmailService {
         pass: process.env.EMAIL_PASS,
       },
       tls: {
-        rejectUnauthorized: false // Allow self-signed certificates
+        // Only allow self-signed certificates outside production.
+        rejectUnauthorized: process.env.NODE_ENV === 'production'
       }
     })
   }

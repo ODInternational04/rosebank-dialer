@@ -5,6 +5,10 @@ import { emailService } from '@/lib/emailService'
 import { getAdminUsers, getAdminEmails, getUserById } from '@/lib/adminUtils'
 
 export async function POST(request: NextRequest) {
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
   console.log('🔍 DEBUG: Customer feedback API called')
   
   try {

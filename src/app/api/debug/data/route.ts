@@ -3,6 +3,10 @@ import { supabase } from '@/lib/supabase'
 import { verifyToken } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
   try {
     const token = request.headers.get('Authorization')?.replace('Bearer ', '')
     if (!token) {
