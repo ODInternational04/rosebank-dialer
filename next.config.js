@@ -1,4 +1,6 @@
 /** @type {import('next').NextConfig} */
+const productionOrigin = process.env.NEXT_PUBLIC_APP_URL || 'https://rosebank-dialer.vercel.app'
+
 const nextConfig = {
   // Configure for deployment
   typescript: {
@@ -23,7 +25,7 @@ const nextConfig = {
           {
             key: 'Access-Control-Allow-Origin',
             value: process.env.NODE_ENV === 'production' 
-              ? 'https://dialer-rouge.vercel.app' 
+              ? productionOrigin
               : '*'
           },
           {

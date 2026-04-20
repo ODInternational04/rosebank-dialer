@@ -27,8 +27,7 @@ const BUILD_TIME_DEFAULTS: Config = {
  */
 const isBuildTime = (): boolean => {
   return process.env.NEXT_PHASE === 'phase-production-build' ||
-         process.env.npm_lifecycle_event === 'build' ||
-         !process.env.NEXT_PUBLIC_SUPABASE_URL
+         process.env.npm_lifecycle_event === 'build'
 }
 
 /**
@@ -52,21 +51,30 @@ function getConfig(): Config {
   const missing = requiredVars.filter(key => !process.env[key])
   
   if (missing.length > 0) {
-    console.error(
+    const message =
       `🚨 Missing required environment variables: ${missing.join(', ')}\n` +
-      `Please check your .env.local file and ensure all required variables are set.`
-    )
-    // Return defaults instead of throwing to prevent runtime crashes
+      `Please set these values in your environment configuration.`
+
+    if ((process.env.NODE_ENV || 'development') === 'production') {
+      throw new Error(message)
+    }
+
+    console.error(message)
     return BUILD_TIME_DEFAULTS
   }
 
   // Validate JWT secret strength
   const jwtSecret = process.env.JWT_SECRET!
   if (jwtSecret.length < 32) {
-    console.error(
+    const message =
       '🚨 JWT_SECRET must be at least 32 characters long for security.\n' +
       'Generate a secure secret using: openssl rand -base64 64'
-    )
+
+    if ((process.env.NODE_ENV || 'development') === 'production') {
+      throw new Error(message)
+    }
+
+    console.error(message)
   }
 
   // Validate Supabase URL format
