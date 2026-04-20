@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
-import { verifyPassword, generateToken, validatePasswordStrength } from '@/lib/auth'
+import { verifyPassword, generateToken } from '@/lib/auth'
 import { validateInput, loginValidationSchema, sanitizeObject } from '@/lib/validation'
 import { createSession } from '@/lib/session'
+import { emailService } from '@/lib/emailService'
 import { LoginRequest } from '@/types'
 
 /**
@@ -30,8 +31,8 @@ const failedAttempts = new Map<string, { count: number; lastAttempt: number; blo
 
 // Login attempt limits
 const LOGIN_LIMITS = {
-  MAX_ATTEMPTS: 5,
-  LOCKOUT_DURATION: 15 * 60 * 1000, // 15 minutes
+  MAX_ATTEMPTS: 3,
+  LOCKOUT_DURATION: 10 * 60 * 1000, // 10 minutes
   ATTEMPT_WINDOW: 5 * 60 * 1000, // 5 minutes
 }
 
@@ -235,12 +236,62 @@ async function recordFailedAttempt(attemptKey: string, email: string, ip: string
   if (attemptData.count >= LOGIN_LIMITS.MAX_ATTEMPTS) {
     attemptData.blockedUntil = now + LOGIN_LIMITS.LOCKOUT_DURATION
     console.warn(`Account locked for ${email} from IP ${ip} after ${attemptData.count} failed attempts`)
+    await notifyAdminsOfLockout(email, ip, attemptData.count, attemptData.blockedUntil)
   }
   
   failedAttempts.set(attemptKey, attemptData)
   
   // Log the failed attempt
   await logAuthAttempt(email, ip, 'FAILED', reason)
+}
+
+/**
+ * Notifies active admin users when an account gets locked due to failed login attempts
+ */
+async function notifyAdminsOfLockout(
+  email: string,
+  ip: string,
+  failedAttemptsCount: number,
+  blockedUntil: number
+): Promise<void> {
+  try {
+    const supabase = createAdminClient()
+    const { data: admins, error } = await supabase
+      .from('users')
+      .select('email')
+      .eq('role', 'admin')
+      .eq('is_active', true)
+
+    if (error || !admins || admins.length === 0) {
+      console.warn('Could not fetch admins for lockout notification')
+      return
+    }
+
+    const adminEmails = admins.map(admin => admin.email).filter(Boolean)
+    if (adminEmails.length === 0) {
+      return
+    }
+
+    const unlockTime = new Date(blockedUntil).toLocaleString()
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://rosebank-dialer.vercel.app'
+
+    await emailService.sendEmail({
+      to: adminEmails,
+      subject: 'Security Alert: User Login Locked After Failed Attempts',
+      text: [
+        'Security alert from IBV Dialer.',
+        '',
+        `A login was locked after ${failedAttemptsCount} failed attempts.`,
+        `Target email: ${email}`,
+        `Source IP: ${ip}`,
+        `Locked until: ${unlockTime}`,
+        '',
+        `Review user activity in dashboard: ${appUrl}/dashboard/users`,
+      ].join('\n')
+    })
+  } catch (error) {
+    console.error('Failed to notify admins of lockout:', error)
+  }
 }
 
 /**
