@@ -132,6 +132,24 @@ function detectSuspiciousActivity(request: NextRequest): string | null {
  */
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+
+  // Hard-block debug and test routes in production
+  if (process.env.NODE_ENV === 'production') {
+    if (
+      pathname === '/api/debug' ||
+      pathname.startsWith('/api/debug/') ||
+      pathname === '/api/test' ||
+      pathname.startsWith('/api/test/')
+    ) {
+      return new NextResponse(null, { status: 404 })
+    }
+
+    // Redirect public test pages to login
+    if (pathname.startsWith('/test-')) {
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
+  }
+
   const response = NextResponse.next()
 
   // Skip middleware for static files and internal Next.js routes

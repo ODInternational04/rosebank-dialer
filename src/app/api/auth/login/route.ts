@@ -9,13 +9,18 @@ import { LoginRequest } from '@/types'
  * OPTIONS /api/auth/login - Handle preflight requests
  */
 export async function OPTIONS(request: NextRequest) {
+  const allowedOrigin = process.env.NODE_ENV === 'production'
+    ? 'https://rosebank-dialer.vercel.app'
+    : 'http://localhost:3000'
+
   return new NextResponse(null, {
     status: 200,
     headers: {
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin': allowedOrigin,
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       'Access-Control-Max-Age': '86400',
+      'Vary': 'Origin',
     },
   })
 }
