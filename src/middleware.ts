@@ -11,7 +11,7 @@ const rateLimitMap = new Map<string, { count: number; resetTime: number; firstRe
 
 // Rate limit configurations for different endpoints
 const RATE_LIMITS = {
-  '/api/auth/login': { requests: 5, windowMs: 5 * 60 * 1000 }, // 5 requests per 5 minutes
+  '/api/auth/login': { requests: 30, windowMs: 5 * 60 * 1000 }, // 30 requests per 5 minutes (app-level lockout handles credential attempts)
   '/api/auth/register': { requests: 3, windowMs: 10 * 60 * 1000 }, // 3 requests per 10 minutes
   '/api/auth/': { requests: 10, windowMs: 60 * 1000 }, // 10 requests per minute for other auth
   '/api/': { requests: 100, windowMs: 60 * 1000 }, // 100 requests per minute for general API
@@ -190,6 +190,7 @@ export function middleware(request: NextRequest) {
         return new NextResponse(
           JSON.stringify({
             error: 'Rate limit exceeded. Please try again later.',
+            code: 'RATE_LIMIT_EXCEEDED',
             retryAfter: Math.ceil(windowMs / 1000)
           }),
           {

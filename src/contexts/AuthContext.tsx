@@ -17,6 +17,7 @@ export interface LoginResult {
   code?: string
   retryAfter?: number
   attemptsRemaining?: number
+  status?: number
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -70,12 +71,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       const errorData = await response.json().catch(() => ({}))
+      const retryAfterHeader = response.headers.get('retry-after')
       return {
         success: false,
         error: errorData.error || 'Login failed',
         code: errorData.code,
-        retryAfter: errorData.retryAfter,
+        retryAfter: errorData.retryAfter || (retryAfterHeader ? Number(retryAfterHeader) : undefined),
         attemptsRemaining: errorData.attemptsRemaining,
+        status: response.status,
       }
     } catch (error) {
       console.error('Login error:', error)
