@@ -117,9 +117,26 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (userError || !user) {
-        await recordFailedAttempt(attemptKey, email, clientIp, 'User not found')
+        const attemptResult = await recordFailedAttempt(attemptKey, email, clientIp, 'User not found')
+        if (attemptResult.blockedUntil) {
+          const retryAfter = Math.ceil((attemptResult.blockedUntil - Date.now()) / 1000)
+          return NextResponse.json(
+            {
+              error: 'Account temporarily locked due to too many failed attempts',
+              code: 'ACCOUNT_LOCKED',
+              retryAfter,
+              attemptsRemaining: 0
+            },
+            { status: 429 }
+          )
+        }
+
         return NextResponse.json(
-          { error: 'Invalid email or password', code: 'INVALID_CREDENTIALS' },
+          {
+            error: 'Invalid email or password',
+            code: 'INVALID_CREDENTIALS',
+            attemptsRemaining: attemptResult.attemptsRemaining
+          },
           { status: 401 }
         )
       }
@@ -136,9 +153,26 @@ export async function POST(request: NextRequest) {
       // Verify password
       const isValidPassword = await verifyPassword(password, user.password_hash)
       if (!isValidPassword) {
-        await recordFailedAttempt(attemptKey, email, clientIp, 'Invalid password')
+        const attemptResult = await recordFailedAttempt(attemptKey, email, clientIp, 'Invalid password')
+        if (attemptResult.blockedUntil) {
+          const retryAfter = Math.ceil((attemptResult.blockedUntil - Date.now()) / 1000)
+          return NextResponse.json(
+            {
+              error: 'Account temporarily locked due to too many failed attempts',
+              code: 'ACCOUNT_LOCKED',
+              retryAfter,
+              attemptsRemaining: 0
+            },
+            { status: 429 }
+          )
+        }
+
         return NextResponse.json(
-          { error: 'Invalid email or password', code: 'INVALID_CREDENTIALS' },
+          {
+            error: 'Invalid email or password',
+            code: 'INVALID_CREDENTIALS',
+            attemptsRemaining: attemptResult.attemptsRemaining
+          },
           { status: 401 }
         )
       }
@@ -225,7 +259,12 @@ export async function POST(request: NextRequest) {
 /**
  * Records a failed login attempt and implements progressive delays
  */
-async function recordFailedAttempt(attemptKey: string, email: string, ip: string, reason: string): Promise<void> {
+async function recordFailedAttempt(
+  attemptKey: string,
+  email: string,
+  ip: string,
+  reason: string
+): Promise<{ attemptsRemaining: number; blockedUntil?: number }> {
   const now = Date.now()
   const attemptData = failedAttempts.get(attemptKey) || { count: 0, lastAttempt: 0 }
   
@@ -243,6 +282,11 @@ async function recordFailedAttempt(attemptKey: string, email: string, ip: string
   
   // Log the failed attempt
   await logAuthAttempt(email, ip, 'FAILED', reason)
+
+  return {
+    attemptsRemaining: Math.max(0, LOGIN_LIMITS.MAX_ATTEMPTS - attemptData.count),
+    blockedUntil: attemptData.blockedUntil
+  }
 }
 
 /**

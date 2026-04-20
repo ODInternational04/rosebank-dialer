@@ -5,10 +5,18 @@ import { User } from '@/types'
 
 interface AuthContextType {
   user: Omit<User, 'password'> | null
-  login: (email: string, password: string) => Promise<boolean>
+  login: (email: string, password: string) => Promise<LoginResult>
   logout: () => void
   isLoading: boolean
   isAdmin: boolean
+}
+
+export interface LoginResult {
+  success: boolean
+  error?: string
+  code?: string
+  retryAfter?: number
+  attemptsRemaining?: number
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -29,7 +37,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<Omit<User, 'password'> | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<LoginResult> => {
     try {
       // Clear any existing auth state before attempting login
       setUser(null)
@@ -58,12 +66,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Set user state after successful storage
         setUser(data.user)
-        return true
+        return { success: true }
       }
-      return false
+
+      const errorData = await response.json().catch(() => ({}))
+      return {
+        success: false,
+        error: errorData.error || 'Login failed',
+        code: errorData.code,
+        retryAfter: errorData.retryAfter,
+        attemptsRemaining: errorData.attemptsRemaining,
+      }
     } catch (error) {
       console.error('Login error:', error)
-      return false
+      return {
+        success: false,
+        error: 'An error occurred during login. Please try again.'
+      }
     }
   }
 

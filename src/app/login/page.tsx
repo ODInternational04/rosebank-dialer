@@ -9,6 +9,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [attemptsRemaining, setAttemptsRemaining] = useState<number | null>(null)
+  const [lockoutSeconds, setLockoutSeconds] = useState(0)
   const { login, isLoading: authLoading, user } = useAuth()
   const router = useRouter()
 
@@ -19,12 +21,39 @@ export default function LoginPage() {
     }
   }, [user, authLoading, router])
 
+  useEffect(() => {
+    if (lockoutSeconds <= 0) return
+
+    const timer = setInterval(() => {
+      setLockoutSeconds(prev => {
+        if (prev <= 1) {
+          clearInterval(timer)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [lockoutSeconds])
+
+  const formatTime = (totalSeconds: number) => {
+    const minutes = Math.floor(totalSeconds / 60)
+    const seconds = totalSeconds % 60
+    return `${minutes}:${String(seconds).padStart(2, '0')}`
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setIsLoading(true)
 
     try {
+      if (lockoutSeconds > 0) {
+        setError(`Too many failed attempts. Try again in ${formatTime(lockoutSeconds)}.`)
+        return
+      }
+
       // Wait for auth to be ready
       if (authLoading) {
         setError('Authentication system is initializing. Please wait...')
@@ -32,12 +61,25 @@ export default function LoginPage() {
         return
       }
       
-      const success = await login(email, password)
-      if (success) {
+      const result = await login(email, password)
+      if (result.success) {
+        setAttemptsRemaining(null)
+        setLockoutSeconds(0)
         // Use replace to prevent back button issues
         router.replace('/dashboard')
       } else {
-        setError('Invalid email or password')
+        if (result.code === 'ACCOUNT_LOCKED' && result.retryAfter) {
+          setLockoutSeconds(result.retryAfter)
+          setAttemptsRemaining(0)
+          setError(`Too many failed attempts. Try again in ${formatTime(result.retryAfter)}.`)
+        } else {
+          if (typeof result.attemptsRemaining === 'number') {
+            setAttemptsRemaining(result.attemptsRemaining)
+            setError(`Invalid email or password. Attempts remaining: ${result.attemptsRemaining}`)
+          } else {
+            setError(result.error || 'Invalid email or password')
+          }
+        }
       }
     } catch (error) {
       console.error('Login error:', error)
@@ -78,6 +120,7 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 className="input"
                 placeholder="Enter your email"
+                disabled={lockoutSeconds > 0}
                 required
               />
             </div>
@@ -93,16 +136,35 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 className="input"
                 placeholder="Enter your password"
+                disabled={lockoutSeconds > 0}
                 required
               />
             </div>
 
+            {attemptsRemaining !== null && lockoutSeconds === 0 && (
+              <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                Attempts remaining: {attemptsRemaining}
+              </p>
+            )}
+
+            {lockoutSeconds > 0 && (
+              <p className="text-sm text-danger-700 bg-danger-50 border border-danger-200 rounded-lg px-3 py-2">
+                Login temporarily locked. Try again in {formatTime(lockoutSeconds)}.
+              </p>
+            )}
+
             <button
               type="submit"
-              disabled={isLoading || authLoading}
+              disabled={isLoading || authLoading || lockoutSeconds > 0}
               className="w-full btn btn-primary py-3 text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {authLoading ? 'Initializing...' : isLoading ? 'Signing in...' : 'Sign In'}
+              {authLoading
+                ? 'Initializing...'
+                : lockoutSeconds > 0
+                  ? `Locked (${formatTime(lockoutSeconds)})`
+                  : isLoading
+                    ? 'Signing in...'
+                    : 'Sign In'}
             </button>
           </form>
 
