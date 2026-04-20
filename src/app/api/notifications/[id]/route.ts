@@ -216,6 +216,7 @@ export async function DELETE(
   { params }: { params: Params }
 ) {
   try {
+    const supabase = createAdminClient()
     const token = request.headers.get('Authorization')?.replace('Bearer ', '')
     if (!token) {
       return NextResponse.json({ error: 'No token provided' }, { status: 401 })

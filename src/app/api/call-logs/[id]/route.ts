@@ -205,6 +205,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const supabase = createAdminClient()
     const token = request.headers.get('Authorization')?.replace('Bearer ', '')
     if (!token) {
       return NextResponse.json({ error: 'No token provided' }, { status: 401 })
@@ -220,12 +221,10 @@ export async function DELETE(
       return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
     }
 
-    const { id: callLogId } = await params
-
     const { data: callLog, error } = await supabase
       .from('call_logs')
       .delete()
-      .eq('id', callLogId)
+      .eq('id', id)
       .select()
       .single()
 

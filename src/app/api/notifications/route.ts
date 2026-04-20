@@ -212,6 +212,7 @@ export async function POST(request: NextRequest) {
 // Helper endpoint for creating quick callback notifications
 export async function PUT(request: NextRequest) {
   try {
+    const supabase = createAdminClient()
     const token = request.headers.get('Authorization')?.replace('Bearer ', '')
     if (!token) {
       return NextResponse.json({ error: 'No token provided' }, { status: 401 })
@@ -292,6 +293,7 @@ export async function PUT(request: NextRequest) {
 // Delete notifications (used when callback is completed)
 export async function DELETE(request: NextRequest) {
   try {
+    const supabase = createAdminClient()
     const token = request.headers.get('Authorization')?.replace('Bearer ', '')
     if (!token) {
       return NextResponse.json({ error: 'No token provided' }, { status: 401 })
