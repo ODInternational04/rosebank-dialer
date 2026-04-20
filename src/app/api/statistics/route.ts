@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = createAdminClient()
     const { username, password, clientType = 'gold', date } = await request.json()
     
     console.log('Received credentials:', { username, password, clientType, date })

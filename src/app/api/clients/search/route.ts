@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+export const dynamic = 'force-dynamic'
 
 // Quick search for clients by phone, name, box number, or contract number
 export async function GET(request: NextRequest) {
   try {
+    const supabase = createAdminClient()
     const searchParams = request.nextUrl.searchParams
     const query = searchParams.get('q')?.trim()
 
