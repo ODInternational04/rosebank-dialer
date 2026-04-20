@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
-import { verifyToken, hashPassword } from '@/lib/auth'
+import { verifyToken, hashPassword, validatePasswordStrength } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
@@ -156,8 +156,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate password strength
-    if (password.length < 6) {
-      return NextResponse.json({ error: 'Password must be at least 6 characters long' }, { status: 400 })
+    const passwordErrors = validatePasswordStrength(password)
+    if (passwordErrors.length > 0) {
+      return NextResponse.json(
+        {
+          error: 'Password does not meet security requirements',
+          details: passwordErrors
+        },
+        { status: 400 }
+      )
     }
 
     // Validate role
@@ -173,10 +180,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if email already exists
+    const normalizedEmail = email.toLowerCase()
+
     const { data: existingUser } = await supabase
       .from('users')
       .select('email')
-      .eq('email', email)
+      .eq('email', normalizedEmail)
       .single()
 
     if (existingUser) {
@@ -187,7 +196,7 @@ export async function POST(request: NextRequest) {
     const password_hash = await hashPassword(password)
 
     const userData = {
-      email,
+      email: normalizedEmail,
       password_hash,
       first_name,
       last_name,

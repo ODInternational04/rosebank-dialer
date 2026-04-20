@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { hashPassword, verifyPassword } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
   try {
     // Test password hashing
     const testPassword = 'admin123'

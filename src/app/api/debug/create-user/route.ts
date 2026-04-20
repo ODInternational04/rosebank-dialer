@@ -3,6 +3,10 @@ import { supabase } from '@/lib/supabase'
 import { hashPassword } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
   try {
     const { email = 'test@test.com', password = 'test123' } = await request.json()
 

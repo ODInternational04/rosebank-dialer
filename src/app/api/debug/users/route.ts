@@ -3,6 +3,10 @@ import { supabase } from '@/lib/supabase'
 import { verifyPassword } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
   try {
     // Get all users from database
     const { data: users, error } = await supabase
