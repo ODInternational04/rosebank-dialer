@@ -224,8 +224,46 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
+      // In rare cases, insert can succeed while the returning/select path errors.
+      // Verify existence by email and treat as success if the user was created.
+      const { data: createdUser } = await supabase
+        .from('users')
+        .select(`
+          id,
+          email,
+          first_name,
+          last_name,
+          role,
+          is_active,
+          can_access_vault_clients,
+          can_access_gold_clients,
+          created_at,
+          updated_at
+        `)
+        .eq('email', normalizedEmail)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (createdUser) {
+        return NextResponse.json({
+          ...createdUser,
+          stats: {
+            totalCalls: 0,
+            completedCalls: 0,
+            successRate: 0,
+          }
+        }, { status: 201 })
+      }
+
       console.error('Error creating user:', error)
-      return NextResponse.json({ error: 'Failed to create user' }, { status: 500 })
+      return NextResponse.json(
+        {
+          error: 'Failed to create user',
+          details: error.message
+        },
+        { status: 500 }
+      )
     }
 
     return NextResponse.json({
