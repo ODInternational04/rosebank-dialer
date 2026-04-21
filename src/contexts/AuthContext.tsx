@@ -40,13 +40,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (email: string, password: string): Promise<LoginResult> => {
     try {
+      console.log('🔐 Starting login attempt for:', email)
+      
       // Clear any existing auth state before attempting login
       setUser(null)
       if (typeof window !== 'undefined') {
         localStorage.removeItem('token')
         localStorage.removeItem('user')
+        console.log('✓ Cleared existing auth data')
       }
 
+      console.log('📤 Sending login request to API...')
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -56,13 +60,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         cache: 'no-store', // Prevent caching issues
       })
 
+      console.log('📥 Received response:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
+      })
+
       if (response.ok) {
         const data = await response.json()
+        console.log('✅ Login successful:', {
+          email: data.user?.email,
+          role: data.user?.role,
+          hasToken: !!data.token
+        })
         
         // Ensure localStorage is available (client-side only)
         if (typeof window !== 'undefined') {
           localStorage.setItem('token', data.token)
           localStorage.setItem('user', JSON.stringify(data.user))
+          console.log('✓ Auth data stored in localStorage')
         }
         
         // Set user state after successful storage
@@ -71,6 +87,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       const errorData = await response.json().catch(() => ({}))
+      console.error('❌ Login failed:', {
+        status: response.status,
+        error: errorData.error,
+        code: errorData.code,
+        attemptsRemaining: errorData.attemptsRemaining
+      })
+      
       const retryAfterHeader = response.headers.get('retry-after')
       return {
         success: false,
@@ -81,7 +104,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         status: response.status,
       }
     } catch (error) {
-      console.error('Login error:', error)
+      console.error('💥 Login error (exception):', error)
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        console.error('Network error - is the server running?')
+        return {
+          success: false,
+          error: 'Network error. Please check your connection and try again.'
+        }
+      }
       return {
         success: false,
         error: 'An error occurred during login. Please try again.'

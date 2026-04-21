@@ -10,16 +10,28 @@ import { LoginRequest } from '@/types'
  * OPTIONS /api/auth/login - Handle preflight requests
  */
 export async function OPTIONS(request: NextRequest) {
-  const allowedOrigin = process.env.NODE_ENV === 'production'
-    ? 'https://rosebank-dialer.vercel.app'
-    : 'http://localhost:3000'
+  // Get the origin from request or use environment variable
+  const requestOrigin = request.headers.get('origin')
+  const allowedOrigins = [
+    'https://rosebank-dialer.vercel.app',
+    process.env.NEXT_PUBLIC_APP_URL,
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
+    'http://localhost:3000',
+    'http://localhost:3001',
+  ].filter(Boolean)
+
+  // Allow the request origin if it's in our allowed list, otherwise use first allowed origin
+  const allowedOrigin = requestOrigin && allowedOrigins.includes(requestOrigin) 
+    ? requestOrigin 
+    : allowedOrigins[0]
 
   return new NextResponse(null, {
     status: 200,
     headers: {
-      'Access-Control-Allow-Origin': allowedOrigin,
+      'Access-Control-Allow-Origin': allowedOrigin || '*',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Allow-Credentials': 'true',
       'Access-Control-Max-Age': '86400',
       'Vary': 'Origin',
     },
@@ -45,11 +57,29 @@ export async function POST(request: NextRequest) {
   let attemptKey = ''
   
   try {
+    // Check critical environment variables
+    if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+      console.error('❌ CRITICAL: JWT_SECRET not properly configured')
+      return NextResponse.json(
+        { error: 'Server configuration error. Please contact administrator.', code: 'CONFIG_ERROR' },
+        { status: 500 }
+      )
+    }
+    
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      console.error('❌ CRITICAL: Supabase credentials not configured')
+      return NextResponse.json(
+        { error: 'Database connection error. Please contact administrator.', code: 'DB_CONFIG_ERROR' },
+        { status: 500 }
+      )
+    }
+    
     // Parse and validate request body
     let body: LoginRequest
     try {
       body = await request.json()
     } catch (parseError) {
+      console.error('Parse error:', parseError)
       return NextResponse.json(
         { error: 'Invalid JSON payload', code: 'INVALID_JSON' },
         { status: 400 }

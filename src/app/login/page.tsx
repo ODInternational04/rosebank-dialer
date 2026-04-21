@@ -246,10 +246,34 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-6 text-center">
+          <div className="mt-6 text-center space-y-3">
+            {(lockoutSeconds > 0 || attemptsRemaining !== null) && (
+              <button
+                type="button"
+                onClick={() => {
+                  clearSecurityState()
+                  setLockoutSeconds(0)
+                  setAttemptsRemaining(null)
+                  setError('')
+                }}
+                className="text-sm text-primary-600 hover:text-primary-800 underline"
+              >
+                Clear lockout state
+              </button>
+            )}
+            
             <p className="text-sm text-gray-600">
               Need an account? Contact your administrator.
             </p>
+            
+            {process.env.NODE_ENV === 'development' && (
+              <a
+                href="/login-debug"
+                className="text-xs text-gray-500 hover:text-gray-700 underline block"
+              >
+                Debug Login Issues
+              </a>
+            )}
           </div>
         </div>
       </div>
